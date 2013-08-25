@@ -1,6 +1,6 @@
 program test_barrier
 
-! Test to ensure that the soft barrier actually creates a barrier.
+! Test to ensure that a nonblocking barrier actually doesn't block!
 
 use omp_lib, only: omp_get_num_threads, omp_get_thread_num
 use noblock_barrier, only: soft_barrier
@@ -11,7 +11,7 @@ integer, allocatable :: foo(:), bar(:)
 
 integer :: mynum
 
-!$omp parallel shared(foo) private(mynum)
+!$omp parallel private(mynum)
 
 mynum = omp_get_thread_num()
 call foo_barrier%init()
@@ -23,17 +23,17 @@ foo = -1
 
 if (mynum == 1) call sleep(1)
 
-foo(mynum+1) = mynum
 call foo_barrier%begin()
 
+foo(mynum+1) = mynum
+
 !$omp single
-call foo_barrier%end()
 bar = foo
 !$omp end single
 
 !$omp end parallel
 
-if (all(bar /= -1)) then
+if (bar(2) == -1) then
    print *, "Test passed!"
 else
    print *, "Test failed!"

@@ -1,19 +1,27 @@
 FC ?= gfortran-4.7.3
 FFLAGS += -fopenmp
 
-all: test_noblock_barrier
+all: test_barrier test_noblock
 
-test: test_noblock_barrier
-	test_noblock_barrier
+test: test_barrier test_noblock
+	test_barrier
+	test_noblock
 
 .PHONY: all test clean
 
-OBJS := test_noblock_barrier.o noblock_barrier.o
+TBAR_OBJS := test_barrier.o noblock_barrier.o
 
-test_noblock_barrier: $(OBJS)
+test_barrier: $(TBAR_OBJS)
 	$(FC) $(FFLAGS) $^ -o $@
 
-test_noblock_barrier.o: noblock_barrier.mod
+TNB_OBJS := test_noblock.o noblock_barrier.o
+
+test_noblock: $(TNB_OBJS)
+	$(FC) $(FFLAGS) $^ -o $@
+
+test_barrier.o: noblock_barrier.mod
+test_noblock.o: noblock_barrier.mod
+
 noblock_barrier.mod: noblock_barrier.o
 	-@:
 
@@ -21,4 +29,4 @@ noblock_barrier.mod: noblock_barrier.o
 	$(FC) $(FFLAGS) -c $< -o $@
 
 clean:
-	$(RM) *.o *.mod test_noblock_barrier
+	$(RM) *.o *.mod test_barrier test_noblock
