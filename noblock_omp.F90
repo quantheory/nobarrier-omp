@@ -1,10 +1,8 @@
-module noblock_barrier
+module noblock_omp
 ! This module implements a non-blocking barrier in OpenMP. This can be used
 ! to ensure that no thread enters a part of the program before all threads
 ! have exited some other part.
 
-! TODO: Make the object reusable.
-! TODO: Rename this module so it can contain more things.
 ! TODO: Destructor?
 ! TODO: Push some dependencies down into individual routines?
 ! TODO: Get implicit/explicit barriers out of init method?
@@ -100,4 +98,4 @@ subroutine sb_wait(self)
 
 end subroutine sb_wait
 
-end module noblock_barrier
+end module noblock_omp

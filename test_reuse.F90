@@ -3,7 +3,7 @@ program test_reuse
 ! Test to ensure that a soft barrier can be reset and reused.
 
 use omp_lib, only: omp_get_num_threads, omp_get_thread_num
-use noblock_barrier, only: soft_barrier
+use noblock_omp, only: soft_barrier
 
 implicit none
 
