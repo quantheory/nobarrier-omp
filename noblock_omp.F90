@@ -4,12 +4,10 @@ module noblock_omp
 ! have exited some other part.
 
 ! TODO: Destructor?
-! TODO: Push some dependencies down into individual routines?
 ! TODO: Get implicit/explicit barriers out of init method?
 ! TODO: Pad thread_locks to prevent false sharing?
 
-use omp_lib, only: omp_lock_kind, omp_init_lock, omp_set_lock, &
-     omp_unset_lock, omp_get_thread_num, omp_get_num_threads
+use omp_lib, only: omp_lock_kind, omp_get_thread_num
 
 implicit none
 private
@@ -34,6 +32,7 @@ end type soft_barrier
 contains
 
 subroutine sb_init(self)
+  use omp_lib, only: omp_init_lock, omp_get_num_threads
   class(soft_barrier), intent(inout) :: self
   integer :: mynum
 
@@ -48,6 +47,7 @@ subroutine sb_init(self)
 end subroutine sb_init
 
 subroutine sb_reset(self)
+  use omp_lib, only: omp_set_lock
   class(soft_barrier), intent(inout) :: self
   integer :: mynum
 
@@ -61,6 +61,7 @@ subroutine sb_reset(self)
 end subroutine sb_reset
 
 subroutine sb_barrier(self)
+  use omp_lib, only: omp_unset_lock
   class(soft_barrier), intent(inout) :: self
   integer :: mynum
 
@@ -70,6 +71,7 @@ subroutine sb_barrier(self)
 end subroutine sb_barrier
 
 subroutine sb_wait(self)
+  use omp_lib, only: omp_set_lock, omp_unset_lock
   class(soft_barrier), intent(inout) :: self
   integer :: i
 
