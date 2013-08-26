@@ -5,10 +5,10 @@ module noblock_barrier
 
 ! TODO: Make the object reusable.
 ! TODO: Rename this module so it can contain more things.
-! TODO: Rename the begin/end methods to barrier/wait or something.
 ! TODO: Destructor?
 ! TODO: Push some dependencies down into individual routines?
-! TODO: Get implicit barrier out of init method?
+! TODO: Get implicit/explicit barriers out of init method?
+! TODO: Pad thread_locks to prevent false sharing?
 
 use omp_lib, only: omp_lock_kind, omp_init_lock, omp_set_lock, &
      omp_unset_lock, omp_get_thread_num, omp_get_num_threads
@@ -28,8 +28,9 @@ type soft_barrier
    integer(omp_lock_kind), private, allocatable :: thread_locks(:)
  contains
    procedure, pass(self) :: init => sb_init
-   procedure, pass(self) :: begin => sb_begin
-   procedure, pass(self) :: end => sb_end
+   procedure, pass(self) :: reset => sb_reset
+   procedure, pass(self) :: barrier => sb_barrier
+   procedure, pass(self) :: wait => sb_wait
 end type soft_barrier
 
 contains
@@ -40,25 +41,37 @@ subroutine sb_init(self)
 
   mynum = omp_get_thread_num()
   !$omp single
-  self%complete = .false.
   call omp_init_lock(self%complete_lock)
   allocate(self%thread_locks(omp_get_num_threads()))
   !$omp end single
   call omp_init_lock(self%thread_locks(mynum))
-  call omp_set_lock(self%thread_locks(mynum))
+  call self%reset()
 
 end subroutine sb_init
 
-subroutine sb_begin(self)
+subroutine sb_reset(self)
+  class(soft_barrier), intent(inout) :: self
+  integer :: mynum
+
+  mynum = omp_get_thread_num()
+  !$omp barrier
+  call omp_set_lock(self%thread_locks(mynum))
+  !$omp single
+  self%complete = .false.
+  !$omp end single
+
+end subroutine sb_reset
+
+subroutine sb_barrier(self)
   class(soft_barrier), intent(inout) :: self
   integer :: mynum
 
   mynum = omp_get_thread_num()
   call omp_unset_lock(self%thread_locks(mynum))
 
-end subroutine sb_begin
+end subroutine sb_barrier
 
-subroutine sb_end(self)
+subroutine sb_wait(self)
   class(soft_barrier), intent(inout) :: self
   integer :: i
 
@@ -85,6 +98,6 @@ subroutine sb_end(self)
      call omp_unset_lock(self%complete_lock)
   end if
 
-end subroutine sb_end
+end subroutine sb_wait
 
 end module noblock_barrier

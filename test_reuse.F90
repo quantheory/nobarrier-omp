@@ -1,6 +1,6 @@
-program test_barrier
+program test_reuse
 
-! Test to ensure that the soft barrier actually creates a barrier.
+! Test to ensure that a soft barrier can be reset and reused.
 
 use omp_lib, only: omp_get_num_threads, omp_get_thread_num
 use noblock_barrier, only: soft_barrier
@@ -17,6 +17,9 @@ integer :: mynum
 
 mynum = omp_get_thread_num()
 call foo_barrier%init()
+call foo_barrier%barrier()
+call foo_barrier%wait()
+call foo_barrier%reset()
 
 !$omp single
 allocate(foo(omp_get_num_threads()))
@@ -41,4 +44,4 @@ else
    print *, "Test failed!"
 end if
 
-end program test_barrier
+end program test_reuse

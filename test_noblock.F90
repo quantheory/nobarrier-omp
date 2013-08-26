@@ -1,9 +1,11 @@
-program test_barrier
+program test_noblock
 
 ! Test to ensure that a nonblocking barrier actually doesn't block!
 
 use omp_lib, only: omp_get_num_threads, omp_get_thread_num
 use noblock_barrier, only: soft_barrier
+
+implicit none
 
 type(soft_barrier) :: foo_barrier
 
@@ -11,7 +13,7 @@ integer, allocatable :: foo(:), bar(:)
 
 integer :: mynum
 
-!$omp parallel private(mynum)
+!$omp parallel shared(foo,bar,foo_barrier) private(mynum)
 
 mynum = omp_get_thread_num()
 call foo_barrier%init()
@@ -23,7 +25,7 @@ foo = -1
 
 if (mynum == 1) call sleep(1)
 
-call foo_barrier%begin()
+call foo_barrier%barrier()
 
 foo(mynum+1) = mynum
 
@@ -39,4 +41,4 @@ else
    print *, "Test failed!"
 end if
 
-end program test_barrier
+end program test_noblock
