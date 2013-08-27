@@ -4,7 +4,6 @@ module noblock_omp
 ! have exited some other part.
 
 ! TODO: Destructor?
-! TODO: Get implicit/explicit barriers out of init method?
 ! TODO: Pad thread_locks to prevent false sharing?
 
 use omp_lib, only: omp_lock_kind, omp_get_thread_num
@@ -43,6 +42,7 @@ subroutine sb_init(self)
   !$omp end single
   call omp_init_lock(self%thread_locks(mynum))
   call self%reset()
+  !$omp barrier
 
 end subroutine sb_init
 
@@ -52,11 +52,10 @@ subroutine sb_reset(self)
   integer :: mynum
 
   mynum = omp_get_thread_num()
-  !$omp barrier
   call omp_set_lock(self%thread_locks(mynum))
   !$omp single
   self%complete = .false.
-  !$omp end single
+  !$omp end single nowait
 
 end subroutine sb_reset
 

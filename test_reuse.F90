@@ -19,7 +19,9 @@ mynum = omp_get_thread_num()
 call foo_barrier%init()
 call foo_barrier%barrier()
 call foo_barrier%wait()
+!$omp barrier
 call foo_barrier%reset()
+!$omp barrier
 
 !$omp single
 allocate(foo(omp_get_num_threads()))
