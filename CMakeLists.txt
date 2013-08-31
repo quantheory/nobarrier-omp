@@ -12,6 +12,9 @@ if(CMAKE_Fortran_COMPILER_ID MATCHES GNU)
   # GNU compiler flags
   set(CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} -fopenmp")
 
+  set(CMAKE_Fortran_FLAGS_DEBUG
+    "${CMAKE_Fortran_FLAGS_DEBUG} -fbounds-check")
+
 endif()
 
 # Fortran-specific options.
