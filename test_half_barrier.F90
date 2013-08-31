@@ -3,7 +3,7 @@ program test_half_barrier
 ! Test the half_barrier type.
 
 use omp_lib, only: omp_get_num_threads, omp_get_thread_num
-use noblock_omp, only: half_barrier
+use nobarrier_omp, only: half_barrier
 
 implicit none
 

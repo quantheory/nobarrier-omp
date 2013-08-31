@@ -3,7 +3,7 @@ program test_noblock
 ! Test to ensure that a nonblocking barrier actually doesn't block!
 
 use omp_lib, only: omp_get_num_threads, omp_get_thread_num
-use noblock_omp, only: soft_barrier
+use nobarrier_omp, only: soft_barrier
 
 implicit none
 

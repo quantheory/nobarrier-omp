@@ -1,10 +1,7 @@
-module noblock_omp
-! This module implements a non-blocking barrier in OpenMP. This can be used
+module nobarrier_omp
+! This module implements non-blocking barriers in OpenMP. These can be used
 ! to ensure that no thread enters a part of the program before all threads
 ! have exited some other part.
-
-! TODO: Destructor?
-! TODO: Pad thread_locks to prevent false sharing?
 
 use omp_lib, only: omp_lock_kind, omp_get_thread_num
 
@@ -154,4 +151,4 @@ pure function add_mod4(m, n) result(p)
   p = mod(m+n,4)
 end function add_mod4
 
-end module noblock_omp
+end module nobarrier_omp
