@@ -26,7 +26,7 @@ foo = 0
 test_passed = .true.
 !$omp end single
 
-do i = 1, 10
+do i = 1, 3
 
    if (mynum == 1) call sleep(1)
 
@@ -34,7 +34,7 @@ do i = 1, 10
    call foo_barrier%barrier()
 
    !$omp single
-   test_passed = test_passed .and. (foo(1) == mynum*(i-1))
+   test_passed = test_passed .and. (foo(2) == (i-1))
    !$omp end single nowait
 
 end do
