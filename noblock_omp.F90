@@ -13,6 +13,7 @@ private
 save
 
 public :: soft_barrier
+public :: half_barrier
 
 type soft_barrier
    ! Whether or not the barrier has been passed.
@@ -28,6 +29,14 @@ type soft_barrier
    procedure, pass(self) :: wait => sb_wait
 end type soft_barrier
 
+type half_barrier
+   integer, private, allocatable :: idxs(:)
+   type(soft_barrier), private :: sb_pool(0:3)
+contains
+  procedure, pass(self) :: init => hb_init
+  procedure, pass(self) :: barrier => hb_barrier
+end type half_barrier
+
 contains
 
 subroutine sb_init(self)
@@ -38,7 +47,7 @@ subroutine sb_init(self)
   mynum = omp_get_thread_num()
   !$omp single
   call omp_init_lock(self%complete_lock)
-  allocate(self%thread_locks(omp_get_num_threads()))
+  allocate(self%thread_locks(0:omp_get_num_threads()-1))
   !$omp end single
   call omp_init_lock(self%thread_locks(mynum))
   call self%reset()
@@ -83,13 +92,13 @@ subroutine sb_wait(self)
         ! In this case, we need to complete the barrier. Get all the thread
         ! locks to ensure that all threads are done reading, then set
         ! the complete flag and release everything.
-        do i = 1, size(self%thread_locks)
+        do i = 0, ubound(self%thread_locks, 1)
            call omp_set_lock(self%thread_locks(i))
         end do
 
         self%complete = .true.
 
-        do i = 1, size(self%thread_locks)
+        do i = 0, ubound(self%thread_locks, 1)
            call omp_unset_lock(self%thread_locks(i))
         end do
 
@@ -98,5 +107,51 @@ subroutine sb_wait(self)
   end if
 
 end subroutine sb_wait
+
+subroutine hb_init(self)
+  use omp_lib, only: omp_get_num_threads
+  class(half_barrier), intent(inout) :: self
+  integer :: i, mynum
+
+  mynum = omp_get_thread_num()
+
+  !$omp single
+  allocate(self%idxs(0:omp_get_num_threads()-1))
+  !$omp end single
+
+  self%idxs(mynum) = 0
+
+  do i = 0, 3
+     call self%sb_pool(i)%init()
+  end do
+
+  call self%sb_pool(2)%barrier()
+  call self%sb_pool(2)%wait()
+  call self%sb_pool(3)%barrier()
+  call self%sb_pool(3)%wait()
+  call self%sb_pool(0)%barrier()
+
+end subroutine hb_init
+
+subroutine hb_barrier(self)
+  class(half_barrier), intent(inout) :: self
+  integer :: mynum
+
+  mynum = omp_get_thread_num()
+
+  call self%sb_pool(add_mod4(self%idxs(mynum),2))%reset()
+  call self%sb_pool(self%idxs(mynum))%wait()
+  call self%sb_pool(add_mod4(self%idxs(mynum),1))%barrier()
+
+  self%idxs(mynum) = add_mod4(self%idxs(mynum), 1)
+
+end subroutine hb_barrier
+
+! Utility function to find m+n mod 4.
+pure function add_mod4(m, n) result(p)
+  integer, intent(in) :: m, n
+  integer :: p
+  p = mod(m+n,4)
+end function add_mod4
 
 end module noblock_omp

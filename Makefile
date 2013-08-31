@@ -1,12 +1,13 @@
 FC ?= gfortran-4.7.3
-FFLAGS += -fopenmp
+FFLAGS += -fopenmp -fbounds-check
 
-all: test_barrier test_noblock test_reuse
+all: test_barrier test_noblock test_reuse test_half_barrier
 
-test: test_barrier test_noblock test_reuse
+test: test_barrier test_noblock test_reuse test_half_barrier
 	test_barrier
 	test_noblock
 	test_reuse
+	test_half_barrier
 
 .PHONY: all test clean
 
@@ -25,9 +26,15 @@ TRU_OBJS := test_reuse.o noblock_omp.o
 test_reuse: $(TRU_OBJS)
 	$(FC) $(FFLAGS) $^ -o $@
 
+THB_OBJS := test_half_barrier.o noblock_omp.o
+
+test_half_barrier: $(THB_OBJS)
+	$(FC) $(FFLAGS) $^ -o $@
+
 test_barrier.o: noblock_omp.mod
 test_noblock.o: noblock_omp.mod
 test_reuse.o: noblock_omp.mod
+test_half_barrier.o: noblock_omp.mod
 
 noblock_omp.mod: noblock_omp.o
 	-@:
@@ -36,4 +43,5 @@ noblock_omp.mod: noblock_omp.o
 	$(FC) $(FFLAGS) -c $< -o $@
 
 clean:
-	$(RM) *.o *.mod test_barrier test_noblock test_reuse
+	$(RM) *.o *.mod test_barrier test_noblock test_reuse \
+	test_half_barrier
