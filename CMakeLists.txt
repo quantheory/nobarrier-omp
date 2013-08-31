@@ -13,7 +13,7 @@ if(CMAKE_Fortran_COMPILER_ID MATCHES GNU)
   set(CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} -fopenmp")
 
   set(CMAKE_Fortran_FLAGS_DEBUG
-    "${CMAKE_Fortran_FLAGS_DEBUG} -fbounds-check")
+    "${CMAKE_Fortran_FLAGS_DEBUG} -fcheck=all")
 
 endif()
 
