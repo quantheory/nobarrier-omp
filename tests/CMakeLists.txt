@@ -7,7 +7,7 @@ function(add_simple_Fortran_test test_name)
   # Link to the library being tested.
   target_link_libraries(${test_name} nobarrier_omp)
 
-  add_test(NAME ${test_name} COMMAND ${test_name})
+  add_test(NAME ${test_name} COMMAND env OMP_NUM_THREADS=3 ${test_name})
 
 endfunction()
 
