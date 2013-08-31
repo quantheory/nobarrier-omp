@@ -1,0 +1,32 @@
+#+startup:showall
+
+#+title: nobarrier-omp README
+#+author: Sean Patrick Santos
+#+email: santos@ucar.edu
+
+* Overview
+
+  This code contains Fortran 2003 objects which are intended for use in
+  reducing the total amount of synchronization in an OpenMP program. It is
+  very much a work in progress.
+
+  This code may use Fortran 2003 features not officially supported by the
+  OpenMP standard. This is a necessary evil; at the time of this writing,
+  the newest OpenMP standard is 4.0, and it still deliberately lists some
+  Fortran 2003 features as unsupported, even in cases where those features
+  are *usually* harmless when used in conjunction with OpenMP.
+
+* License
+
+  This code is distributed under the terms of the BSD 2-clause license; see
+  the LICENSE file here.
+
+* Todo list
+
+** TODO Add destructors to derived types.
+
+** TODO Investigate whether uses of these types result in false sharing.
+
+** TODO Have the number of times a thread must hit a barrier be variable.
+
+** TODO Switch to CMake/CTest for tests.
