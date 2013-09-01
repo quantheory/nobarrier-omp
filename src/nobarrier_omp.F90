@@ -33,6 +33,7 @@ type half_barrier
 contains
   procedure, pass(self) :: init => hb_init
   procedure, pass(self) :: barrier => hb_barrier
+  procedure, pass(self) :: final => hb_final
 end type half_barrier
 
 contains
@@ -150,6 +151,13 @@ subroutine hb_init(self)
      call self%sb_pool(i)%init()
   end do
 
+  ! The reasoning here is a bit complex.
+  !  Lock 0 will be waiting next, so hit the barrier.
+  !  Lock 1 will be hitting barrier next, so it is ready as-is.
+  !  Lock 2 will be reset next, so we need to cycle it through and hit a
+  !  barrier to make sure that it is really ready.
+  !  Lock 3 will be reset in two cycles, so we need it to cycle, but don't
+  !  need a barrier. We use the cycle for lock 3 as the barrier for lock 2.
   call self%sb_pool(2)%barrier()
   call self%sb_pool(2)%wait()
   call self%sb_pool(3)%barrier()
@@ -164,6 +172,18 @@ subroutine hb_barrier(self)
 
   mynum = omp_get_thread_num()
 
+  ! In mod4 arithmetic, here's what's happening. Assume self%idxs(mynum) is
+  ! 0, for simplicity.
+  ! sb_pool(0) waits here, to make sure that no thread can exit until the
+  ! previous half barrier call is complete.
+  ! sb_pool(1) hits the barrier afterward, to set up conditions for the
+  ! next waiting call.
+  ! sb_pool(2) is reset so can it can hit the barrier next; in order to
+  ! guarantee that the reset is complete, it must reset before the barrier
+  ! so that sb_pool(1) separates its reset and barrier calls.
+  ! sb_pool(3) is not being used, because it waited most recently; it needs
+  ! a full cycle between its wait call and being reset, so it is left alone
+  ! here.
   call self%sb_pool(add_mod4(self%idxs(mynum),2))%reset()
   call self%sb_pool(self%idxs(mynum))%wait()
   call self%sb_pool(add_mod4(self%idxs(mynum),1))%barrier()
@@ -171,6 +191,28 @@ subroutine hb_barrier(self)
   self%idxs(mynum) = add_mod4(self%idxs(mynum), 1)
 
 end subroutine hb_barrier
+
+subroutine hb_final(self)
+  class(half_barrier), intent(inout) :: self
+  integer :: i, mynum
+
+  mynum = omp_get_thread_num()
+
+  ! Release locks before the soft_barrier can be destroyed.
+  call self%sb_pool(add_mod4(self%idxs(mynum),1))%barrier()
+
+  do i = 0, 3
+     call self%sb_pool(i)%final()
+  end do
+
+  ! Rely on the barriers in the above final method to isolate the last use
+  ! of self%idxs from this deallocation.
+
+  !$omp single
+  deallocate(self%idxs)
+  !$omp end single
+
+end subroutine hb_final
 
 ! Utility function to find m+n mod 4.
 pure function add_mod4(m, n) result(p)
