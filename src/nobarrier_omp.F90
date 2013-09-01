@@ -3,7 +3,7 @@ module nobarrier_omp
 ! to ensure that no thread enters a part of the program before all threads
 ! have exited some other part.
 
-use omp_lib, only: omp_lock_kind, omp_get_thread_num
+use omp_lib, only: omp_lock_kind, omp_nest_lock_kind, omp_get_thread_num
 
 implicit none
 private
@@ -18,7 +18,7 @@ type soft_barrier
    ! Lock that must be acquired to set the "complete" component.
    integer(omp_lock_kind), private :: complete_lock
    ! Locks that each thread will release upon completing the barrier.
-   integer(omp_lock_kind), private, allocatable :: thread_locks(:)
+   integer(omp_nest_lock_kind), private, allocatable :: thread_locks(:)
  contains
    procedure, pass(self) :: init => sb_init
    procedure, pass(self) :: reset => sb_reset
@@ -38,9 +38,10 @@ end type half_barrier
 
 contains
 
-subroutine sb_init(self)
-  use omp_lib, only: omp_init_lock, omp_get_num_threads
+subroutine sb_init(self, touches)
+  use omp_lib, only: omp_init_lock, omp_init_nest_lock, omp_get_num_threads
   class(soft_barrier), intent(inout) :: self
+  integer, intent(in), optional :: touches
   integer :: mynum
 
   mynum = omp_get_thread_num()
@@ -48,19 +49,29 @@ subroutine sb_init(self)
   call omp_init_lock(self%complete_lock)
   allocate(self%thread_locks(0:omp_get_num_threads()-1))
   !$omp end single
-  call omp_init_lock(self%thread_locks(mynum))
-  call self%reset()
+  call omp_init_nest_lock(self%thread_locks(mynum))
+  call self%reset(touches)
   !$omp barrier
 
 end subroutine sb_init
 
-subroutine sb_reset(self)
-  use omp_lib, only: omp_set_lock
+subroutine sb_reset(self, touches)
+  use omp_lib, only: omp_set_nest_lock
   class(soft_barrier), intent(inout) :: self
-  integer :: mynum
+  ! Number of barrier touches required before the lock is released.
+  integer, intent(in), optional :: touches
+  integer :: touches_loc, mynum, i
+
+  if (present(touches)) then
+     touches_loc = touches
+  else
+     touches_loc = 1
+  end if
 
   mynum = omp_get_thread_num()
-  call omp_set_lock(self%thread_locks(mynum))
+  do i = 1, touches_loc
+     call omp_set_nest_lock(self%thread_locks(mynum))
+  end do
   !$omp single
   self%complete = .false.
   !$omp end single nowait
@@ -68,17 +79,18 @@ subroutine sb_reset(self)
 end subroutine sb_reset
 
 subroutine sb_barrier(self)
-  use omp_lib, only: omp_unset_lock
+  use omp_lib, only: omp_unset_nest_lock
   class(soft_barrier), intent(inout) :: self
   integer :: mynum
 
   mynum = omp_get_thread_num()
-  call omp_unset_lock(self%thread_locks(mynum))
+  call omp_unset_nest_lock(self%thread_locks(mynum))
 
 end subroutine sb_barrier
 
 subroutine sb_wait(self)
-  use omp_lib, only: omp_set_lock, omp_unset_lock
+  use omp_lib, only: omp_set_lock, omp_unset_lock, omp_set_nest_lock, &
+       omp_unset_nest_lock
   class(soft_barrier), intent(inout) :: self
   integer :: i
 
@@ -92,13 +104,13 @@ subroutine sb_wait(self)
         ! locks to ensure that all threads are done reading, then set
         ! the complete flag and release everything.
         do i = 0, ubound(self%thread_locks, 1)
-           call omp_set_lock(self%thread_locks(i))
+           call omp_set_nest_lock(self%thread_locks(i))
         end do
 
         self%complete = .true.
 
         do i = 0, ubound(self%thread_locks, 1)
-           call omp_unset_lock(self%thread_locks(i))
+           call omp_unset_nest_lock(self%thread_locks(i))
         end do
 
      end if
@@ -108,7 +120,7 @@ subroutine sb_wait(self)
 end subroutine sb_wait
 
 subroutine sb_final(self)
-  use omp_lib, only: omp_destroy_lock
+  use omp_lib, only: omp_destroy_lock, omp_destroy_nest_lock
   class(soft_barrier), intent(inout) :: self
 
   integer :: mynum
@@ -119,13 +131,13 @@ subroutine sb_final(self)
   mynum = omp_get_thread_num()
   !$omp barrier
 
-  call omp_destroy_lock(self%thread_locks(mynum))
+  call omp_destroy_nest_lock(self%thread_locks(mynum))
   !$omp single
   call omp_destroy_lock(self%complete_lock)
   !$omp end single
 
   ! Break into two single sections because we actually want the barrier
-  ! between them; all omp_destroy_lock calls should be finished before
+  ! between them; all omp_destroy_nest_lock calls should be finished before
   ! deallocating the lock array.
 
   !$omp single

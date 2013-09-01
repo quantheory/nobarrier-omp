@@ -79,7 +79,7 @@ subroutine test_assert(self, assert)
   class(test_status), intent(inout) :: self
   logical, intent(in) :: assert
 
-  !$omp atomic update
+  !$omp atomic
   self%test_passed = self%test_passed .and. assert
 
 end subroutine test_assert

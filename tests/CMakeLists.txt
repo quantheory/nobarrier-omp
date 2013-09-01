@@ -27,6 +27,7 @@ add_nobarrier_omp_test(test_barrier)
 add_nobarrier_omp_test(test_noblock)
 add_nobarrier_omp_test(test_reuse)
 add_nobarrier_omp_test(test_reinit)
+add_nobarrier_omp_test(test_multi_barrier)
 
 # Half barrier tests.
 add_nobarrier_omp_test(test_half_barrier)
