@@ -1,10 +1,8 @@
-# Function to add a test in Fortran that adheres to a simple naming
-# convention.
-function(add_simple_Fortran_test test_name)
+# Add a nobarrier_omp test following a simple convention.
+function(add_nobarrier_omp_test test_name)
 
-  add_executable(${test_name} ${test_name}.F90)
+  add_executable(${test_name} ${test_name}.F90 utils.F90)
 
-  # Link to the library being tested.
   target_link_libraries(${test_name} nobarrier_omp)
 
   add_test(NAME ${test_name}
@@ -15,9 +13,21 @@ function(add_simple_Fortran_test test_name)
 
 endfunction()
 
-add_simple_Fortran_test(test_barrier)
-add_simple_Fortran_test(test_noblock)
-add_simple_Fortran_test(test_reuse)
-add_simple_Fortran_test(test_reinit)
-add_simple_Fortran_test(test_half_barrier)
-add_simple_Fortran_test(test_half_reinit)
+# These tests are for the test utilities themselves.
+add_nobarrier_omp_test(test_status_pass)
+
+add_nobarrier_omp_test(test_status_fail)
+set_tests_properties(test_status_fail
+  PROPERTIES WILL_FAIL TRUE)
+
+add_nobarrier_omp_test(test_counter)
+
+# Soft barrier tests.
+add_nobarrier_omp_test(test_barrier)
+add_nobarrier_omp_test(test_noblock)
+add_nobarrier_omp_test(test_reuse)
+add_nobarrier_omp_test(test_reinit)
+
+# Half barrier tests.
+add_nobarrier_omp_test(test_half_barrier)
+add_nobarrier_omp_test(test_half_reinit)

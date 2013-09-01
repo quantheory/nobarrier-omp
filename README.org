@@ -23,7 +23,7 @@
 
 * Todo list
 
-** TODO Investigate whether uses of these types result in false sharing.
+** TODO Investigate whether uses of these types results in false sharing.
 
 ** TODO Have the number of times a thread must hit a barrier be variable.
 

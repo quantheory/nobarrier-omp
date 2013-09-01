@@ -4,16 +4,21 @@ program test_reuse
 
 use omp_lib, only: omp_get_num_threads, omp_get_thread_num
 use nobarrier_omp, only: soft_barrier
+use utils, only: omp_counter, test_status
 
 implicit none
 
 type(soft_barrier) :: foo_barrier
 
-integer, allocatable :: foo(:), bar(:)
+type(omp_counter) :: counter
+
+integer, allocatable :: bar(:)
 
 integer :: mynum
 
-!$omp parallel shared(foo,bar,foo_barrier) private(mynum)
+type(test_status) :: status
+
+!$omp parallel private(mynum)
 
 mynum = omp_get_thread_num()
 call foo_barrier%init()
@@ -23,27 +28,26 @@ call foo_barrier%wait()
 call foo_barrier%reset()
 !$omp barrier
 
-!$omp single
-allocate(foo(omp_get_num_threads()))
-foo = -1
-!$omp end single
+call counter%init()
 
 if (mynum == 1) call sleep(1)
 
-foo(mynum+1) = mynum
+call counter%touch()
 call foo_barrier%barrier()
 
 !$omp single
 call foo_barrier%wait()
-bar = foo
+bar = counter%get()
 !$omp end single
+
+call counter%final()
+
+call foo_barrier%final()
 
 !$omp end parallel
 
-if (all(bar /= -1)) then
-   print *, "Test passed!"
-else
-   print *, "Test failed!"
-end if
+call status%assert(all(bar == 1))
+
+call status%report()
 
 end program test_reuse

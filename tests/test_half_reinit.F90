@@ -4,49 +4,49 @@ program test_half_barrier
 
 use omp_lib, only: omp_get_num_threads, omp_get_thread_num
 use nobarrier_omp, only: half_barrier
+use utils, only: omp_counter, test_status
 
 implicit none
 
 type(half_barrier) :: foo_barrier
 
-integer, allocatable :: foo(:)
+type(omp_counter) :: counter
+
+integer, allocatable :: bar(:)
 
 integer :: i, mynum
 
-logical :: test_passed
+type(test_status) :: status
 
-!$omp parallel shared(foo,test_passed,foo_barrier) private(i,mynum)
+!$omp parallel private(i,mynum)
 
 mynum = omp_get_thread_num()
 call foo_barrier%init()
 call foo_barrier%final()
 call foo_barrier%init()
 
-!$omp single
-allocate(foo(omp_get_num_threads()))
-foo = 0
-test_passed = .true.
-!$omp end single
+call counter%init()
 
 do i = 1, 3
 
    if (mynum == 1) call sleep(1)
 
-   foo(mynum+1) = mynum*i
+   call counter%touch()
    call foo_barrier%barrier()
 
    !$omp single
-   test_passed = test_passed .and. (foo(2) == (i-1))
+   bar = counter%get()
+   call status%assert(bar(2) == (i-1))
    !$omp end single nowait
 
 end do
 
+call counter%final()
+
+call foo_barrier%final()
+
 !$omp end parallel
 
-if (test_passed) then
-   print *, "Test passed!"
-else
-   print *, "Test failed!"
-end if
+call status%report()
 
 end program test_half_barrier
