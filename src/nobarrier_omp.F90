@@ -24,6 +24,7 @@ type soft_barrier
    procedure, pass(self) :: reset => sb_reset
    procedure, pass(self) :: barrier => sb_barrier
    procedure, pass(self) :: wait => sb_wait
+   procedure, pass(self) :: final => sb_final
 end type soft_barrier
 
 type half_barrier
@@ -104,6 +105,33 @@ subroutine sb_wait(self)
   end if
 
 end subroutine sb_wait
+
+subroutine sb_final(self)
+  use omp_lib, only: omp_destroy_lock
+  class(soft_barrier), intent(inout) :: self
+
+  integer :: mynum
+
+  ! Precondition: The "barrier" method must be called by each thread before
+  ! it reaches here, so that no thread is holding a lock after the barrier.
+
+  mynum = omp_get_thread_num()
+  !$omp barrier
+
+  call omp_destroy_lock(self%thread_locks(mynum))
+  !$omp single
+  call omp_destroy_lock(self%complete_lock)
+  !$omp end single
+
+  ! Break into two single sections because we actually want the barrier
+  ! between them; all omp_destroy_lock calls should be finished before
+  ! deallocating the lock array.
+
+  !$omp single
+  deallocate(self%thread_locks)
+  !$omp end single
+
+end subroutine sb_final
 
 subroutine hb_init(self)
   use omp_lib, only: omp_get_num_threads

@@ -30,3 +30,9 @@
 ** TODO Have the number of times a thread must hit a barrier be variable.
 
 ** TODO Switch to CMake/CTest for tests.
+
+** TODO Determine what to do in case of an allocate error.
+
+   The return code can be checked, but Fortran doesn't have exceptions or
+   any standard error handling mechanism. Also, these allocates are not
+   very big, so they should not fail often.
