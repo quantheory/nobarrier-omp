@@ -1,0 +1,48 @@
+module test_soft_barrier
+
+use pfunit_mod
+
+use omp_lib, only: omp_get_num_threads, omp_get_thread_num
+use nobarrier_omp, only: soft_barrier
+use utils, only: omp_counter
+
+implicit none
+
+contains
+
+@Test
+subroutine test_barrier()
+
+  type(soft_barrier) :: sb
+  type(omp_counter) :: counter
+  integer, allocatable :: count_array(:)
+  integer :: thread_id
+  integer :: i
+
+  !$omp parallel private(thread_id)
+
+  thread_id = omp_get_thread_num()
+  call sb%init()
+  call counter%init()
+
+  if (thread_id == 1) call sleep(1)
+
+  call counter%touch()
+
+  call sb%barrier()
+
+  !$omp single
+  call sb%wait()
+  count_array = counter%get()
+  call assertEqual(count_array, [( 1, i = 1, omp_get_num_threads() )])
+  !$omp end single
+
+  call counter%final()
+
+  call sb%final()
+
+  !$omp end parallel
+
+end subroutine test_barrier
+
+end module test_soft_barrier

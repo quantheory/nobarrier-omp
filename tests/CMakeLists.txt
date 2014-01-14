@@ -23,7 +23,16 @@ set_tests_properties(test_status_fail
 add_nobarrier_omp_test(test_counter)
 
 # Soft barrier tests.
-add_nobarrier_omp_test(test_barrier)
+add_pFUnit_executable(test_soft_barrier_exe test_soft_barrier.pf
+  ${CMAKE_CURRENT_BINARY_DIR} "utils.F90")
+
+target_link_libraries(test_soft_barrier_exe nobarrier_omp)
+
+add_test(NAME test_soft_barrier
+  COMMAND env OMP_NUM_THREADS=3 test_soft_barrier_exe)
+
+define_pFUnit_failure(test_soft_barrier)
+
 add_nobarrier_omp_test(test_noblock)
 add_nobarrier_omp_test(test_reuse)
 add_nobarrier_omp_test(test_reinit)

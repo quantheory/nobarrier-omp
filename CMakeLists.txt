@@ -7,6 +7,9 @@ option(BUILD_SHARED_LIBS
 
 include(CTest)
 
+list(APPEND CMAKE_MODULE_PATH ${CESM_CMAKE_MODULE_DIRECTORY})
+include(CESM_utils)
+
 if(CMAKE_Fortran_COMPILER_ID MATCHES GNU)
 
   # GNU compiler flags
@@ -18,7 +21,6 @@ if(CMAKE_Fortran_COMPILER_ID MATCHES GNU)
 endif()
 
 # Fortran-specific options.
-set(CMAKE_Fortran_FORMAT "FREE")
 set(CMAKE_Fortran_MODULE_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/include")
 
 include_directories("${CMAKE_CURRENT_BINARY_DIR}/include")
