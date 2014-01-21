@@ -10,12 +10,12 @@ implicit none
 
 contains
 
+! Check that waiting on a soft barrier actually causes a thread to block.
 @Test
-subroutine test_barrier()
+subroutine wait_blocks()
 
   type(soft_barrier) :: sb
   type(omp_counter) :: counter
-  integer, allocatable :: count_array(:)
   integer :: thread_id
   integer :: i
 
@@ -33,8 +33,7 @@ subroutine test_barrier()
 
   !$omp single
   call sb%wait()
-  count_array = counter%get()
-  call assertEqual(count_array, [( 1, i = 1, omp_get_num_threads() )])
+  call assertEqual([( 1, i = 1, omp_get_num_threads() )], counter%get())
   !$omp end single
 
   call counter%final()
@@ -43,6 +42,168 @@ subroutine test_barrier()
 
   !$omp end parallel
 
-end subroutine test_barrier
+end subroutine wait_blocks
+
+! Check that hitting a soft barrier without waiting does not block.
+@Test
+subroutine barrier_does_not_block()
+
+  type(soft_barrier) :: sb
+  type(omp_counter) :: counter
+  integer, allocatable :: count_array(:)
+  integer :: thread_id
+
+  !$omp parallel private(thread_id)
+
+  thread_id = omp_get_thread_num()
+  call sb%init()
+  call counter%init()
+
+  if (thread_id == 1) call sleep(1)
+
+  call sb%barrier()
+
+  call counter%touch()
+
+  !$omp single
+  count_array = counter%get()
+  call assertEqual(0, count_array(2))
+  !$omp end single
+
+  call counter%final()
+
+  call sb%final()
+
+  !$omp end parallel
+end subroutine barrier_does_not_block
+
+! Check that waiting still works after resetting the soft_barrier object.
+@Test
+subroutine wait_blocks_after_reset()
+
+  type(soft_barrier) :: sb
+  type(omp_counter) :: counter
+  integer :: thread_id
+  integer :: i
+
+  !$omp parallel private(thread_id)
+
+  thread_id = omp_get_thread_num()
+  call sb%init()
+  call counter%init()
+
+  call sb%barrier()
+  call sb%wait()
+  !$omp barrier
+  call sb%reset()
+  !$omp barrier
+
+  if (thread_id == 1) call sleep(1)
+
+  call counter%touch()
+
+  call sb%barrier()
+
+  !$omp single
+  call sb%wait()
+  call assertEqual([( 1, i = 1, omp_get_num_threads() )], counter%get())
+  !$omp end single
+
+  call counter%final()
+
+  call sb%final()
+
+  !$omp end parallel
+
+end subroutine wait_blocks_after_reset
+
+! Check that waiting still works after finalizing and reinitializing the
+! soft barrier object.
+@Test
+subroutine wait_blocks_after_reinit()
+
+  type(soft_barrier) :: sb
+  type(omp_counter) :: counter
+  integer :: thread_id
+  integer :: i
+
+  !$omp parallel private(thread_id)
+
+  thread_id = omp_get_thread_num()
+  call sb%init()
+  call counter%init()
+
+  call sb%barrier()
+  call sb%final()
+  call sb%init()
+
+  if (thread_id == 1) call sleep(1)
+
+  call counter%touch()
+
+  call sb%barrier()
+
+  !$omp single
+  call sb%wait()
+  call assertEqual([( 1, i = 1, omp_get_num_threads() )], counter%get())
+  !$omp end single
+
+  call counter%final()
+
+  call sb%final()
+
+  !$omp end parallel
+
+end subroutine wait_blocks_after_reinit
+
+! The following functionality may be a case of YAGNI ("you ain't gonna need
+! it"). It seems likely that if you actually want to do this, you also want
+! the ability to have each thread hit the barrier a different number of
+! times (which is not implemented), and past a certain point you run the
+! risk of re-inventing task-based OpenMP rather than just using a compiler
+! that has that capability.
+!
+! That said, it is fairly harmless to keep the functionality so long as
+! there is not a significant performance disparity between nested locks
+! and regular locks.
+!
+! Test that soft barriers that require multiple barrier hits work.
+@Test
+subroutine can_block_for_multiple_barriers()
+
+  type(soft_barrier) :: sb
+  type(omp_counter) :: counter
+  integer :: thread_id
+  integer :: i
+
+  !$omp parallel private(thread_id)
+
+  thread_id = omp_get_thread_num()
+  ! Note initializing with two barriers/wait.
+  call sb%init(2)
+  call counter%init()
+
+  ! First barrier.
+  call sb%barrier()
+
+  if (thread_id == 1) call sleep(1)
+
+  call counter%touch()
+
+  ! Second barrier.
+  call sb%barrier()
+
+  !$omp single
+  call sb%wait()
+  call assertEqual([( 1, i = 1, omp_get_num_threads() )], counter%get())
+  !$omp end single
+
+  call counter%final()
+
+  call sb%final()
+
+  !$omp end parallel
+
+end subroutine can_block_for_multiple_barriers
 
 end module test_soft_barrier
