@@ -8,7 +8,18 @@ use utils, only: omp_counter
 
 implicit none
 
+! Thread ID to intentionally delay during tests.
+! Note that the OpenMP thread IDs start at 0, but Fortran arrays index from
+! 1, so you have to add one when using this to index an array.
+integer, parameter :: delayed_thread = 1
+
 contains
+
+subroutine delay_thread()
+
+  if (omp_get_thread_num() == delayed_thread) call sleep(1)
+
+end subroutine delay_thread
 
 ! Check that waiting on a soft barrier actually causes a thread to block.
 @Test
@@ -16,16 +27,14 @@ subroutine wait_blocks()
 
   type(soft_barrier) :: sb
   type(omp_counter) :: counter
-  integer :: thread_id
   integer :: i
 
-  !$omp parallel private(thread_id)
+  !$omp parallel
 
-  thread_id = omp_get_thread_num()
   call sb%init()
   call counter%init()
 
-  if (thread_id == 1) call sleep(1)
+  call delay_thread()
 
   call counter%touch()
 
@@ -51,15 +60,13 @@ subroutine barrier_does_not_block()
   type(soft_barrier) :: sb
   type(omp_counter) :: counter
   integer, allocatable :: count_array(:)
-  integer :: thread_id
 
-  !$omp parallel private(thread_id)
+  !$omp parallel
 
-  thread_id = omp_get_thread_num()
   call sb%init()
   call counter%init()
 
-  if (thread_id == 1) call sleep(1)
+  call delay_thread()
 
   call sb%barrier()
 
@@ -67,7 +74,7 @@ subroutine barrier_does_not_block()
 
   !$omp single
   count_array = counter%get()
-  call assertEqual(0, count_array(2))
+  call assertEqual(0, count_array(delayed_thread+1))
   !$omp end single
 
   call counter%final()
@@ -83,12 +90,10 @@ subroutine wait_blocks_after_reset()
 
   type(soft_barrier) :: sb
   type(omp_counter) :: counter
-  integer :: thread_id
   integer :: i
 
-  !$omp parallel private(thread_id)
+  !$omp parallel
 
-  thread_id = omp_get_thread_num()
   call sb%init()
   call counter%init()
 
@@ -98,7 +103,7 @@ subroutine wait_blocks_after_reset()
   call sb%reset()
   !$omp barrier
 
-  if (thread_id == 1) call sleep(1)
+  call delay_thread()
 
   call counter%touch()
 
@@ -124,12 +129,10 @@ subroutine wait_blocks_after_reinit()
 
   type(soft_barrier) :: sb
   type(omp_counter) :: counter
-  integer :: thread_id
   integer :: i
 
-  !$omp parallel private(thread_id)
+  !$omp parallel
 
-  thread_id = omp_get_thread_num()
   call sb%init()
   call counter%init()
 
@@ -137,7 +140,7 @@ subroutine wait_blocks_after_reinit()
   call sb%final()
   call sb%init()
 
-  if (thread_id == 1) call sleep(1)
+  call delay_thread()
 
   call counter%touch()
 
@@ -173,12 +176,10 @@ subroutine can_block_for_multiple_barriers()
 
   type(soft_barrier) :: sb
   type(omp_counter) :: counter
-  integer :: thread_id
   integer :: i
 
-  !$omp parallel private(thread_id)
+  !$omp parallel
 
-  thread_id = omp_get_thread_num()
   ! Note initializing with two barriers/wait.
   call sb%init(2)
   call counter%init()
@@ -186,7 +187,7 @@ subroutine can_block_for_multiple_barriers()
   ! First barrier.
   call sb%barrier()
 
-  if (thread_id == 1) call sleep(1)
+  call delay_thread()
 
   call counter%touch()
 
