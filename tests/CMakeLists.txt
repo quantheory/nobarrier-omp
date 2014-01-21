@@ -22,17 +22,17 @@ set_tests_properties(test_status_fail
 
 add_nobarrier_omp_test(test_counter)
 
-# Soft barrier tests.
-add_pFUnit_executable(test_soft_barrier_exe test_soft_barrier.pf
+# Test executable.
+set(pf_files test_soft_barrier.pf test_half_barrier.pf)
+add_pFUnit_executable(pFUnit_test_exe "${pf_files}"
   ${CMAKE_CURRENT_BINARY_DIR} "utils.F90")
 
-target_link_libraries(test_soft_barrier_exe nobarrier_omp)
+target_link_libraries(pFUnit_test_exe nobarrier_omp)
 
-add_test(NAME test_soft_barrier
-  COMMAND env OMP_NUM_THREADS=3 test_soft_barrier_exe)
+add_test(NAME pFUnit_test
+  COMMAND env OMP_NUM_THREADS=3 pFUnit_test_exe)
 
-define_pFUnit_failure(test_soft_barrier)
+define_pFUnit_failure(pFUnit_test)
 
 # Half barrier tests.
-add_nobarrier_omp_test(test_half_barrier)
 add_nobarrier_omp_test(test_half_reinit)

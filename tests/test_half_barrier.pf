@@ -1,0 +1,52 @@
+module test_half_barrier
+
+use pfunit_mod
+
+use omp_lib, only: omp_get_num_threads, omp_get_thread_num
+use nobarrier_omp, only: half_barrier
+use utils, only: omp_counter
+
+implicit none
+
+contains
+
+! Check that waiting on a half barrier causes the thread to block at the
+! right time.
+@Test
+subroutine half_barrier_old_test()
+
+  type(half_barrier) :: hb
+  type(omp_counter) :: counter
+  integer, allocatable :: count_array(:)
+  integer :: thread_id
+  integer :: i
+
+  !$omp parallel private(thread_id, i)
+
+  thread_id = omp_get_thread_num()
+  call hb%init()
+  call counter%init()
+
+  do i = 1, 3
+
+     if (thread_id == 1) call sleep(1)
+
+     call counter%touch()
+     call hb%barrier()
+
+     !$omp single
+     count_array = counter%get()
+     call assertEqual(i-1, count_array(2))
+     !$omp end single nowait
+
+  end do
+
+  call counter%final()
+
+  call hb%final()
+
+  !$omp end parallel
+
+end subroutine half_barrier_old_test
+
+end module test_half_barrier
